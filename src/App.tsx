@@ -23,7 +23,6 @@ import {
   Zap,
 } from 'lucide-react';
 import React from 'react';
-import STUDENT_DATA from './studentData';
 import {
   CartesianGrid,
   Cell,
@@ -52,14 +51,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// --- Student Data (imported from studentData.ts) ---
-const STUDENTS = [
-  { name: 'Allen',        id: 'STU001', program: 'MBA', batch: '2024-26', school: 'Infinitica Business School', examName: 'GRAD360 Placement Readiness Index', examId: 'PRI-2026-MAR-A-001', date: '20 March 2026', generated: '20 March 2026 · 09:30 PM IST', priScore: 77 },
-  { name: 'Swetha',       id: 'STU002', program: 'MBA', batch: '2024-26', school: 'Infinitica Business School', examName: 'GRAD360 Placement Readiness Index', examId: 'PRI-2026-MAR-A-002', date: '20 March 2026', generated: '20 March 2026 · 09:30 PM IST', priScore: 59 },
-  { name: 'Aishwarya',    id: 'STU003', program: 'MBA', batch: '2024-26', school: 'Infinitica Business School', examName: 'GRAD360 Placement Readiness Index', examId: 'PRI-2026-MAR-A-003', date: '20 March 2026', generated: '20 March 2026 · 09:30 PM IST', priScore: 68 },
-  { name: 'Thiganth',     id: 'STU004', program: 'MBA', batch: '2024-26', school: 'Infinitica Business School', examName: 'GRAD360 Placement Readiness Index', examId: 'PRI-2026-MAR-A-004', date: '20 March 2026', generated: '20 March 2026 · 09:30 PM IST', priScore: 50 },
-  { name: 'Rajakumaran',  id: 'STU005', program: 'MBA', batch: '2024-26', school: 'Infinitica Business School', examName: 'GRAD360 Placement Readiness Index', examId: 'PRI-2026-MAR-A-005', date: '20 March 2026', generated: '20 March 2026 · 09:30 PM IST', priScore: 65 },
-];
+// --- API Configuration ---
+const API_URL = 'https://standaloneservice.onrender.com';
 
 
 
@@ -320,13 +313,38 @@ const DomainCard = ({ domain }: { domain: import('./studentData').Domain; key?: 
 
 // --- Main App ---
 
-function ReportPage({ student, onBack }: { student: typeof STUDENTS[0], onBack: () => void }) {
-  const STUDENT = student;
-  const report  = STUDENT_DATA[STUDENT.id] ?? STUDENT_DATA['STU001'];
-  const OVERALL     = report.overall;
-  const DOMAINS     = report.domains;
-  const PSYCHOMETRIC = report.psychometric;
-  const SUMMARY_INSIGHT = report.summary;
+function ReportPage({ student, onBack }: { student: any, onBack: () => void }) {
+  const [reportData, setReportData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetch(`${API_URL}/insights/${student.student_id}`)
+      .then(res => res.json())
+      .then(data => {
+        setReportData(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch report:', err);
+        setLoading(false);
+      });
+  }, [student.student_id]);
+
+  if (loading || !reportData) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#D62027] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[#0f172a] font-bold uppercase tracking-widest text-sm">Generating AI Insights...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const STUDENT = reportData.studentInfo;
+  const OVERALL = reportData.overallMetrics;
+  const DOMAINS = reportData.domains;
+  const SUMMARY_INSIGHT = reportData.summaryInsight;
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] text-[#1a1a1a] font-sans selection:bg-red-100 selection:text-red-900 pb-24">
@@ -577,21 +595,23 @@ function ReportPage({ student, onBack }: { student: typeof STUDENTS[0], onBack: 
           </div>
         </section>
 
-        <section>
-          <SectionHeader title="Psychometric Profile" description="Behavioral and personality traits assessment." />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {PSYCHOMETRIC.map((trait, idx) => (
-              <Card key={idx} className="p-6 flex flex-col items-center justify-center bg-white text-center">
-                <p className="text-[10px] font-black tracking-[0.25em] text-[#94a3b8] uppercase mb-6 h-8 flex items-center">{trait.trait}</p>
-                <div className="w-full">
-                  <Badge variant={trait.status === 'PASS' ? 'solid-green' : 'solid-red'} className="w-full justify-center flex text-[10px] font-black tracking-[0.25em] uppercase py-2">
-                    {trait.status}
-                  </Badge>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
+        {reportData.psychometric && (
+          <section>
+            <SectionHeader title="Psychometric Profile" description="Behavioral and personality traits assessment." />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {reportData.psychometric.map((trait: any, idx: number) => (
+                <Card key={idx} className="p-6 flex flex-col items-center justify-center bg-white text-center">
+                  <p className="text-[10px] font-black tracking-[0.25em] text-[#94a3b8] uppercase mb-6 h-8 flex items-center">{trait.trait}</p>
+                  <div className="w-full">
+                    <Badge variant={trait.status === 'PASS' ? 'solid-green' : 'solid-red'} className="w-full justify-center flex text-[10px] font-black tracking-[0.25em] uppercase py-2">
+                      {trait.status}
+                    </Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* --- 6. FINAL SUMMARY --- */}
         <section className="pt-4">
@@ -614,10 +634,36 @@ function ReportPage({ student, onBack }: { student: typeof STUDENTS[0], onBack: 
 }
 
 export default function App() {
-  const [selectedStudent, setSelectedStudent] = React.useState<typeof STUDENTS[0] | null>(null);
+  const [selectedStudent, setSelectedStudent] = React.useState<any | null>(null);
+  const [students, setStudents] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetch(`${API_URL}/students`)
+      .then(res => res.json())
+      .then(data => {
+        setStudents(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch students:', err);
+        setLoading(false);
+      });
+  }, []);
 
   if (selectedStudent) {
     return <ReportPage student={selectedStudent} onBack={() => setSelectedStudent(null)} />;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#D62027] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[#0f172a] font-bold uppercase tracking-widest text-sm">Loading Student Directory...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -644,33 +690,33 @@ export default function App() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {STUDENTS.map((student) => (
+          {students.map((student) => (
             <Card 
-              key={student.id} 
+              key={student.student_id} 
               className="p-6 bg-white hover:shadow-xl transition-all duration-300 cursor-pointer border-transparent hover:border-slate-200 group"
               onClick={() => setSelectedStudent(student)}
             >
               <div className="flex items-start justify-between mb-6">
                 <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-xl font-black text-slate-700">
-                  {student.name.split(' ').map(n => n[0]).join('')}
+                  {student.student_name.split(' ').map((n: string) => n[0]).join('')}
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-black tracking-[-0.05em] text-[#0f172a]">{student.priScore}</div>
-                  <div className="text-[10px] font-black tracking-[0.25em] text-[#94a3b8] uppercase">PRI Score</div>
+                  <div className="text-2xl font-black tracking-[-0.05em] text-[#0f172a]">{student.overall_accuracy_pct}</div>
+                  <div className="text-[10px] font-black tracking-[0.25em] text-[#94a3b8] uppercase">Accuracy</div>
                 </div>
               </div>
               
-              <h3 className="text-xl font-black tracking-[-0.05em] text-[#0f172a] mb-1 group-hover:text-[#D62027] transition-colors">{student.name}</h3>
-              <p className="text-[10px] font-black tracking-[0.25em] text-[#94a3b8] uppercase mb-4">{student.id} · {student.program}</p>
+              <h3 className="text-xl font-black tracking-[-0.05em] text-[#0f172a] mb-1 group-hover:text-[#D62027] transition-colors">{student.student_name}</h3>
+              <p className="text-[10px] font-black tracking-[0.25em] text-[#94a3b8] uppercase mb-4">{student.student_id} · {student.programme || 'MBA'}</p>
               
               <div className="space-y-2 mb-6">
                 <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
                   <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="truncate">{student.school}</span>
+                  <span className="truncate">Infinitica Business School</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
                   <User className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{student.batch}</span>
+                  <span>{student.batch === 'A' || student.batch === 'B' || student.batch === 'C' ? `Batch ${student.batch}` : student.batch}</span>
                 </div>
               </div>
 
